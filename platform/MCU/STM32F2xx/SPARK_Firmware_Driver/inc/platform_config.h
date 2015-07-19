@@ -106,26 +106,23 @@
 #define UI_TIMER_FREQUENCY                  100	/* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
-//USB OTG Peripheral
+//P1 Platform
 #if (PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION || PLATFORM_ID==PLATFORM_P1)
-//BM-14 uses USB_OTG_FS peripheral
-#define USE_USB_OTG_FS
-//BM-14 has serial flash
-#if PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION
-#define USE_SERIAL_FLASH
-#else
-#define FLASH_UPDATE_MODULES
-#endif
-//BM-14 bootloader with FLASH_UPDATE_MODULES enabled DOES NOT fit in < 16KB
-//#define FLASH_UPDATE_MODULES /* Please do not uncomment this at present */
+    //BM-14 uses USB_OTG_FS peripheral
+    #define USE_USB_OTG_FS
+    //BM-14 has serial flash
+    #define HAS_SERIAL_FLASH
+    #define sFLASH_PAGESIZE     0x1000 /* 4096 bytes sector size that needs to be erased */
+    #define sFLASH_PAGECOUNT    256    /* 1MByte storage */
+// P0 platform
 #elif (PLATFORM_PHOTON_DEV == PLATFORM_ID || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION)
 //BM-09 uses USB_OTG_HS peripheral
-#define USE_USB_OTG_HS
-//BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
-#define FLASH_UPDATE_MODULES
+    #define USE_USB_OTG_HS
 #endif
 
-#ifdef USE_SERIAL_FLASH
+#define FLASH_UPDATE_MODULES
+
+#ifdef HAS_SERIAL_FLASH
 //SPI FLASH Interface pins
 #define sFLASH_SPI                          SPI2
 #define sFLASH_SPI_CLK                      RCC_APB1Periph_SPI2

@@ -36,7 +36,7 @@
 #include "system_tick_hal.h"
 #include "usb_hal.h"
 #include "platform_system_flags.h"
-#ifdef USE_SERIAL_FLASH
+#if defined(HAS_SERIAL_FLASH)
 #include "spi_flash.h"
 #endif
 
@@ -84,7 +84,7 @@ uint8_t BUTTON_GetState(Button_TypeDef Button);
 uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
 void BUTTON_ResetDebouncedState(Button_TypeDef Button);
 
-#ifdef USE_SERIAL_FLASH
+#ifdef HAS_SERIAL_FLASH
 /* Serial Flash Hardware related methods */
 void sFLASH_SPI_DeInit(void);
 void sFLASH_SPI_Init(void);
