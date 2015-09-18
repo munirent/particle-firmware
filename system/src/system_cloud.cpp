@@ -76,7 +76,13 @@ inline EventType::Enum convert(Spark_Event_TypeDef eventType) {
 
 bool spark_send_event(const char* name, const char* data, int ttl, Spark_Event_TypeDef eventType, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, eventType, reserved));
+    if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) {
+        /* FIXME: Simulate scheduler not wanting to preempt the task */
+        os_thread_scheduling(true, NULL);
+        auto callable = FFL([=]() { return (spark_send_event(name, data, ttl, eventType, reserved)); });
+        auto future = SystemThread.invoke_future(callable);
+        return future->get();
+    }
 
     return spark_protocol_send_event(sp, name, data, ttl, convert(eventType), NULL);
 }

@@ -194,6 +194,10 @@ public:
         lock->unlock();
         queue.enqueue();
         taskEXIT_CRITICAL();
+        /* FIXME: Simulate the scheduler wanting to preempt the task */
+        os_thread_scheduling(false, NULL);
+        /* FIXME: Simulate the scheduler preempting the task and trigger task death */
+        taskYIELD();
         vTaskSuspend(NULL);
         lock->lock();
     }
