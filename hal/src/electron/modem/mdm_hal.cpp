@@ -56,10 +56,10 @@
 #define UNLOCK()       //} unlock()
 
 #ifdef MDM_DEBUG
- #if 1 // colored terminal output using ANSI escape sequences
+ #if 0 // colored terminal output using ANSI escape sequences
   #define COL(c) "\033[" c
  #else
-  #define COL(c)
+  #define COL(c) ""
  #endif
  #define DEF COL("39m")
  #define BLA COL("30m")
@@ -147,7 +147,7 @@ MDMParser::MDMParser(void)
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
 #ifdef MDM_DEBUG
-    _debugLevel = 1;
+    _debugLevel = 3;
     _debugTime = HAL_Timer_Get_Milli_Seconds();
 #endif
 }
@@ -229,6 +229,12 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     DEBUG_D("Socket %d: handle %d closed by remote host\r\n", socket, a);
                     if ((socket != MDM_SOCKET_ERROR) && _sockets[socket].connected)
                         _sockets[socket].connected = false;
+                // +UULOC: <date>,<time>,<lat>,<long>,<alt>,<uncertainty>
+                } else if (_locDate && _locTime && _locLatitude && _locLongitude && _locAltitude && _locUncertainty) {
+                    if((sscanf(cmd, "UULOC: %[^,],%[^,],%[^,],%[^,],%[^,],%[^,]",
+                            _locDate, _locTime, _locLatitude, _locLongitude, _locAltitude, _locUncertainty))) {
+                      _hasLocation = true;
+                    }
                 }
 
                 // GSM/UMTS Specific -------------------------------------------
@@ -1406,6 +1412,36 @@ bool MDMParser::smsRead(int ix, char* num, char* buf, int len)
 
 // ----------------------------------------------------------------
 
+bool MDMParser::requestLocation(unsigned short timeout, unsigned int targetAccuracy,
+    char *latitude, char *longitude, char *uncertainty,
+    char *altitude, char *date, char *time)
+{
+    bool ok = false;
+    LOCK();
+    _hasLocation = false;
+    _locLatitude    = latitude;
+    _locLongitude   = longitude;
+    _locUncertainty = uncertainty;
+    _locAltitude    = altitude;
+    _locDate        = date;
+    _locTime        = time;
+    // mode: 2 one-shot request
+    // sensor: 2 CellLocate
+    // response_type: 0 standard
+    sendFormated("AT+ULOC=2,2,0,%d,%d\r\n", timeout, targetAccuracy);
+    ok = (RESP_OK == waitFinalResp(NULL, NULL, 50));
+    UNLOCK();
+    return ok;
+}
+
+bool MDMParser::hasLocation()
+{
+  return _hasLocation;
+}
+
+
+// ----------------------------------------------------------------
+
 int MDMParser::_cbCUSD(int type, const char* buf, int len, char* resp)
 {
     if ((type == TYPE_PLUS) && resp) {
@@ -1702,7 +1738,7 @@ MDMElectronSerial::MDMElectronSerial(int rxSize /*= 256*/, int txSize /*= 256*/)
     ElectronSerialPipe(rxSize, txSize)
 {
 #ifdef MDM_DEBUG
-        _debugLevel = -1;
+        _debugLevel = 3;
 #endif
 
 // Important to set _dev.lpm = LPM_ENABLED; when HW FLOW CONTROL enabled.

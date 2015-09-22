@@ -86,6 +86,24 @@ cellular_result_t cellular_credentials_set(const char* apn, const char* username
     return 0;
 }
 
+cellular_result_t cellular_request_location(unsigned short timeout, unsigned int targetAccuracy, CellularLocation *location)
+{
+  electronMDM.requestLocation(timeout,
+      targetAccuracy,
+      location->latitude,
+      location->longitude,
+      location->uncertainty,
+      location->altitude,
+      location->date,
+      location->time);
+  return 0;
+}
+
+cellular_result_t cellular_has_location()
+{
+  return electronMDM.hasLocation();
+}
+
 CellularCredentials* cellular_credentials_get(void* reserved)
 {
     return &cellularCredentials;

@@ -319,6 +319,20 @@ public:
     bool smsSend(const char* num, const char* buf);
 
     // ----------------------------------------------------------------
+    // Localization service
+    // ----------------------------------------------------------------
+
+    bool requestLocation(unsigned short timeout,
+        unsigned int targetAccuracy,
+        char *latitude,
+        char *longitude,
+        char *uncertainty,
+        char *altitude,
+        char *date,
+        char *time);
+    bool hasLocation();
+
+    // ----------------------------------------------------------------
     // USSD Unstructured Supplementary Service Data
     // ----------------------------------------------------------------
 
@@ -564,6 +578,14 @@ protected:
     bool _pwr;
     bool _activated;
     bool _attached;
+
+    bool _hasLocation;
+    char *_locDate;
+    char *_locTime;
+    char *_locLatitude;
+    char *_locLongitude;
+    char *_locAltitude;
+    char *_locUncertainty;
 #ifdef MDM_DEBUG
     int _debugLevel;
     system_tick_t _debugTime;

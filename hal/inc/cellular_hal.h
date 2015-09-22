@@ -103,6 +103,19 @@ int cellular_device_info(CellularDevice* device, void* reserved);
  */
 cellular_result_t cellular_credentials_set(const char* apn, const char* username, const char* password, void* reserved);
 
+struct CellularLocation {
+  char latitude[16];
+  char longitude[16];
+  char uncertainty[10];
+  char altitude[8];
+  char date[12];
+  char time[14];
+};
+
+cellular_result_t cellular_request_location(unsigned short timeout,
+    unsigned int targetAccuracy, CellularLocation *location);
+cellular_result_t cellular_has_location();
+
 /**
  * Get cellular connection parameters
  */
