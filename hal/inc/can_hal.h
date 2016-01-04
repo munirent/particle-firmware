@@ -77,11 +77,11 @@ typedef enum HAL_CAN_Filters {
 
 struct CANMessage
 {
-   unsigned long   id;
-   bool            extended;
-   bool            rtr;
-   unsigned char   len;
-   unsigned char   data[8];
+   uint32_t id;
+   bool     extended;
+   bool     rtr;
+   uint8_t  len;
+   uint8_t  data[8];
 
 #ifdef __cplusplus
    CANMessage()
