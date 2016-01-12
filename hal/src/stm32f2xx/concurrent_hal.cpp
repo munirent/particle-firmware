@@ -381,9 +381,9 @@ int os_mutex_recursive_unlock(os_mutex_recursive_t mutex)
 void os_thread_scheduling(bool enabled, void* reserved)
 {
     if (enabled)
-        taskEXIT_CRITICAL();
+        xTaskResumeAll();
     else
-        taskENTER_CRITICAL();
+        vTaskSuspendAll();
 }
 
 int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initial)
@@ -445,6 +445,12 @@ int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, un
             return xTimerStopFromISR(timer, &woken)!=pdPASS;
         else
             return xTimerStop(timer, block)!=pdPASS;
+
+    case OS_TIMER_CHANGE_PERIOD:
+        if (fromISR)
+            return xTimerChangePeriodFromISR(timer, period, &woken)!=pdPASS;
+        else
+            return xTimerChangePeriod(timer, period, block)!=pdPASS;
     }
     return -1;
 }

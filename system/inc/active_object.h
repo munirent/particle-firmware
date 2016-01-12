@@ -250,9 +250,8 @@ protected:
      */
     void run();
 
-    //void invoke_impl(void* fn, void* data, size_t len=0);
-
 protected:
+
 
     // todo - concurrent queue should be a strategy so it's pluggable without requiring inheritance
     virtual bool take(Item& item)=0;
@@ -275,6 +274,8 @@ protected:
 public:
 
     ActiveObjectBase(const ActiveObjectConfiguration& config) : configuration(config), started(false) {}
+
+    bool process();
 
     bool isCurrentThread() {
         return _thread_id == std::this_thread::get_id();
@@ -387,6 +388,11 @@ public:
         createQueue();
         setCurrentThread();
         run();
+    }
+
+    void process()
+    {
+        ActiveObjectQueue::process();
     }
 };
 

@@ -79,7 +79,7 @@ const static_ip_config_t* wlan_fetch_saved_ip_config()
     return (const static_ip_config_t*)dct_read_app_data(DCT_IP_CONFIG_OFFSET);
 }
 
-uint32_t HAL_WLAN_SetNetWatchDog(uint32_t timeOutInMS)
+uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInMS)
 {
     wiced_watchdog_kick();
     return 0;
@@ -167,7 +167,7 @@ wlan_result_t wlan_connect_finalize()
     // enable connection from stored profiles
     wlan_result_t result = wiced_interface_up(WICED_STA_INTERFACE);
     if (!result) {
-        HAL_WLAN_notify_connected();
+        HAL_NET_notify_connected();
         wiced_ip_setting_t settings;
         wiced_ip_address_t dns;
 
@@ -193,7 +193,7 @@ wlan_result_t wlan_connect_finalize()
         wiced_network_down(WICED_STA_INTERFACE);
     }
     // DHCP happens synchronously
-    HAL_WLAN_notify_dhcp(!result);
+    HAL_NET_notify_dhcp(!result);
     wiced_network_up_cancel = 0;
     return result;
 }
@@ -208,6 +208,8 @@ WLanSelectAntenna_TypeDef fetch_antenna_selection()
         result = ANT_INTERNAL;  // default
     return WLanSelectAntenna_TypeDef(result);
 }
+
+STATIC_ASSERT(wlanselectantenna_typedef_is_size_1, sizeof(WLanSelectAntenna_TypeDef)==1);
 
 void save_antenna_selection(WLanSelectAntenna_TypeDef selection)
 {
@@ -227,7 +229,7 @@ wlan_result_t wlan_activate()
 {
     wlan_result_t result = wiced_wlan_connectivity_init();
     if (!result)
-        wiced_network_register_link_callback(HAL_WLAN_notify_connected, HAL_WLAN_notify_disconnected, WICED_STA_INTERFACE);
+        wiced_network_register_link_callback(HAL_NET_notify_connected, HAL_NET_notify_disconnected, WICED_STA_INTERFACE);
     wlan_refresh_antenna();
     return result;
 }
@@ -242,7 +244,7 @@ wlan_result_t wlan_disconnect_now()
     socket_close_all();
     wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
-    HAL_WLAN_notify_disconnected();
+    HAL_NET_notify_disconnected();
     return result;
 }
 

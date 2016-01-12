@@ -16,6 +16,7 @@
  ******************************************************************************
  */
 
+#include "spark_wiring_platform.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_usbserial.h"
 #include "system_task.h"
@@ -24,6 +25,7 @@
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"
+#include "system_update.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "system_tick_hal.h"
@@ -51,6 +53,8 @@ unsigned char wlan_profile_index;
 volatile uint8_t SPARK_LED_FADE = 1;
 
 volatile uint8_t Spark_Error_Count;
+volatile uint8_t SYSTEM_POWEROFF;
+
 
 void Network_Setup(bool threaded)
 {
@@ -92,7 +96,7 @@ void manage_network_connection()
     {
         if (SPARK_WLAN_STARTED)
         {
-            WARN("Resetting WLAN!");
+            WARN("!! Resetting WLAN due to %s", (WLAN_WD_TO()) ? "WLAN_WD_TO()":((SPARK_WLAN_RESET) ? "SPARK_WLAN_RESET" : "SPARK_WLAN_SLEEP"));
             auto was_sleeping = SPARK_WLAN_SLEEP;
             auto was_disconnected = network.manual_disconnect();
             cloud_disconnect();
@@ -108,6 +112,7 @@ void manage_network_connection()
     {
         if (!SPARK_WLAN_STARTED || (SPARK_CLOUD_CONNECT && !network.connected()))
         {
+            INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.connected()");
             network.connect();
         }
     }
@@ -218,7 +223,9 @@ void establish_cloud_connection()
         {
             WARN("Cloud socket connection failed: %d", connect_result);
             SPARK_CLOUD_SOCKETED = 0;
-            if (SPARK_WLAN_RESET)
+            // if the user put the networkin listening mode via the button,
+            // the cloud connect may have been cancelled.
+            if (SPARK_WLAN_RESET || network.listening())
                 return;
 
             cloud_connection_failed();
@@ -226,6 +233,14 @@ void establish_cloud_connection()
             network.set_error_count(Spark_Error_Count);
         }
     }
+}
+
+int cloud_handshake()
+{
+	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+	bool presence_announce = !udp;
+	int err = Spark_Handshake(presence_announce);
+	return err;
 }
 
 /**
@@ -238,34 +253,28 @@ void handle_cloud_connection(bool force_events)
     {
         if (!SPARK_CLOUD_CONNECTED)
         {
-            int err = Spark_Handshake();
+        		int err = cloud_handshake();
             if (err)
             {
-                cloud_connection_failed();
-                if (0 > err)
-                {
-                    // Wrong key error, red
-                    LED_SetRGBColor(RGB_COLOR_RED);
-                }
-                else if (1 == err)
-                {
-                    // RSA decryption error, orange
-                    LED_SetRGBColor(RGB_COLOR_ORANGE);
-                }
-                else if (2 == err)
-                {
-                    // RSA signature verification error, magenta
-                    LED_SetRGBColor(RGB_COLOR_MAGENTA);
-                }
-                WARN("Cloud handshake failed, code=%d", err);
-                LED_On(LED_RGB);
-                // delay a little to be sure the user sees the LED color, since
-                // the socket may quickly disconnect and the connection retried, turning
-                // the LED back to cyan
-                system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-                // allow time for the LED to be flashed
-                while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
-                cloud_disconnect();
+            		if (!SPARK_WLAN_RESET && !network.listening())
+            		{
+					cloud_connection_failed();
+					uint32_t color = RGB_COLOR_RED;
+					if (particle::protocol::DECRYPTION_ERROR==err)
+							color = RGB_COLOR_ORANGE;
+					else if (particle::protocol::AUTHENTICATION_ERROR==err)
+							color = RGB_COLOR_MAGENTA;
+					WARN("Cloud handshake failed, code=%d", err);
+					LED_SetRGBColor(color);
+					LED_On(LED_RGB);
+					// delay a little to be sure the user sees the LED color, since
+					// the socket may quickly disconnect and the connection retried, turning
+					// the LED back to cyan
+					system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+					// allow time for the LED to be flashed
+					while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
+            		}
+				cloud_disconnect();
             }
             else
             {
@@ -275,7 +284,7 @@ void handle_cloud_connection(bool force_events)
             }
         }
 
-        if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL)
+        if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)
         {
             Spark_Process_Events();
         }
@@ -286,7 +295,6 @@ void manage_cloud_connection(bool force_events)
 {
     if (SPARK_CLOUD_CONNECT == 0)
     {
-        INFO("Cloud: disconnecting");
         cloud_disconnect();
     }
     else // cloud connection is wanted
@@ -298,6 +306,11 @@ void manage_cloud_connection(bool force_events)
 }
 #endif
 
+
+#if Wiring_SetupButtonUX
+extern void		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+#endif
+
 void Spark_Idle_Events(bool force_events/*=false*/)
 {
     HAL_Notify_WDT();
@@ -305,15 +318,27 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     ON_EVENT_DELTA();
     spark_loop_total_millis = 0;
 
-    manage_serial_flasher();
+    if (!SYSTEM_POWEROFF) {
 
-    manage_network_connection();
+#if Wiring_SetupButtonUX
+		system_handle_single_click(); // display RSSI value on system LED for WiFi or Cellular
+#endif
 
-    manage_smart_config();
+        manage_serial_flasher();
 
-    manage_ip_config();
+        manage_network_connection();
 
-    CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+        manage_smart_config();
+
+        manage_ip_config();
+
+        CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+    }
+    else
+    {
+        system_pending_shutdown();
+    }
+    system_shutdown_if_needed();
 }
 
 /*
@@ -393,6 +418,7 @@ void cloud_disconnect(bool closeSocket)
 
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
+        INFO("Cloud: disconnecting");
         if (closeSocket)
         Spark_Disconnect();
 
