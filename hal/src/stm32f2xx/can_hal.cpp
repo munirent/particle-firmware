@@ -165,7 +165,8 @@ void HAL_CAN_Init(HAL_CAN_Channel channel,
                   uint16_t txQueueSize,
                   void *reserved)
 {
-    if(!drivers[channel]) {
+    if(!drivers[channel])
+    {
         drivers[channel] = new CANDriver(CAN_MAP[channel], rxQueueSize, txQueueSize);
     }
 }
@@ -185,6 +186,10 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel,
                    uint32_t        flags,
                    void *reserved)
 {
+    if(!drivers[channel])
+    {
+        return;
+    }
     drivers[channel]->begin(baud, flags);
 }
 
@@ -199,6 +204,10 @@ void HAL_CAN_Begin(HAL_CAN_Channel channel,
 void HAL_CAN_End(HAL_CAN_Channel channel,
                  void *reserved)
 {
+    if(!drivers[channel])
+    {
+        return;
+    }
     drivers[channel]->end();
 }
 
@@ -216,6 +225,10 @@ bool HAL_CAN_Transmit(HAL_CAN_Channel     channel,
                       const CANMessage *message,
                       void *reserved)
 {
+    if(!drivers[channel])
+    {
+        return false;
+    }
     return drivers[channel]->enqueueTx(*message);
 }
 
@@ -233,6 +246,10 @@ bool HAL_CAN_Receive(HAL_CAN_Channel channel,
                      CANMessage *message,
                      void *reserved)
 {
+    if(!drivers[channel])
+    {
+        return false;
+    }
     return drivers[channel]->dequeueRx(*message);
 }
 
@@ -248,6 +265,10 @@ bool HAL_CAN_Receive(HAL_CAN_Channel channel,
 uint8_t HAL_CAN_Available_Messages(HAL_CAN_Channel channel,
                                    void *reserved)
 {
+    if(!drivers[channel])
+    {
+        return 0;
+    }
     return drivers[channel]->rxQueueSize();
 }
 
@@ -269,6 +290,10 @@ bool HAL_CAN_Add_Filter(HAL_CAN_Channel channel,
                         HAL_CAN_Filters type,
                         void *reserved)
 {
+    if(!drivers[channel])
+    {
+        return false;
+    }
     return drivers[channel]->addFilter(id, mask, type);
 }
 
@@ -283,6 +308,10 @@ bool HAL_CAN_Add_Filter(HAL_CAN_Channel channel,
 void HAL_CAN_Clear_Filters(HAL_CAN_Channel channel,
                            void *reserved)
 {
+    if(!drivers[channel])
+    {
+        return;
+    }
     drivers[channel]->clearFilters();
 }
 
@@ -297,6 +326,10 @@ void HAL_CAN_Clear_Filters(HAL_CAN_Channel channel,
 *******************************************************************************/
 bool HAL_CAN_Is_Enabled(HAL_CAN_Channel channel)
 {
+    if(!drivers[channel])
+    {
+        return false;
+    }
     return drivers[channel]->isEnabled();
 }
 
@@ -311,6 +344,10 @@ bool HAL_CAN_Is_Enabled(HAL_CAN_Channel channel)
 *******************************************************************************/
 HAL_CAN_Errors HAL_CAN_Error_Status(HAL_CAN_Channel channel)
 {
+    if(!drivers[channel])
+    {
+        return CAN_NO_ERROR;
+    }
     return drivers[channel]->errorStatus();
 }
 
@@ -329,6 +366,10 @@ HAL_CAN_Errors HAL_CAN_Error_Status(HAL_CAN_Channel channel)
 *******************************************************************************/
 void HAL_CAN2_TX_Handler(void)
 {
+    if(!drivers[CAN_D1_D2])
+    {
+        return;
+    }
     drivers[CAN_D1_D2]->txInterruptHandler();
 }
 
@@ -342,6 +383,10 @@ void HAL_CAN2_TX_Handler(void)
 *******************************************************************************/
 void HAL_CAN2_RX0_Handler(void)
 {
+    if(!drivers[CAN_D1_D2])
+    {
+        return;
+    }
     drivers[CAN_D1_D2]->rx0InterruptHandler();
 }
 
@@ -358,6 +403,10 @@ void HAL_CAN2_RX0_Handler(void)
 *******************************************************************************/
 void HAL_CAN1_TX_Handler(void)
 {
+    if(!drivers[CAN_C4_C5])
+    {
+        return;
+    }
     drivers[CAN_C4_C5]->txInterruptHandler();
 }
 
@@ -371,6 +420,10 @@ void HAL_CAN1_TX_Handler(void)
 *******************************************************************************/
 void HAL_CAN1_RX0_Handler(void)
 {
+    if(!drivers[CAN_C4_C5])
+    {
+        return;
+    }
     drivers[CAN_C4_C5]->rx0InterruptHandler();
 }
 
@@ -815,9 +868,15 @@ HAL_CAN_Errors CANDriver::errorStatus()
 *******************************************************************************/
 void CANDriver::txInterruptHandler()
 {
+    if(!isEnabled())
+    {
+        return;
+    }
+
     CAN_ClearITPendingBit(hw.can_peripheral, CAN_IT_TME);
 
-    if(txQueue.empty()) {
+    if(txQueue.empty())
+    {
         return;
     }
 
@@ -836,6 +895,11 @@ void CANDriver::txInterruptHandler()
 *******************************************************************************/
 void CANDriver::rx0InterruptHandler()
 {
+    if(!isEnabled())
+    {
+        return;
+    }
+
     // No need to clear CAN_IT_FMP0 flag since it can only be cleared by hardware
 
     CANMessage message;

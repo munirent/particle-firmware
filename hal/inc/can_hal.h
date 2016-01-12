@@ -78,6 +78,7 @@ typedef enum HAL_CAN_Filters {
 struct CANMessage
 {
    uint32_t id;
+   uint8_t  size;
    bool     extended;
    bool     rtr;
    uint8_t  len;
@@ -86,6 +87,7 @@ struct CANMessage
 #ifdef __cplusplus
    CANMessage()
      : id { 0 },
+       size { sizeof(CANMessage) },
        extended { false },
        rtr { false },
        len { 0 },
